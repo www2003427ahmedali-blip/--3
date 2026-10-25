@@ -1,49 +1,26 @@
 name: Check generated files
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
 
 jobs:
-  gen-layouts:
-    name: Layout list
+  check:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-    - run: python3 gen_layouts.py
-    - name: "Run 'python3 gen_layouts.py' to update the generated files."
-      run: git diff --exit-code
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+        fetch-depth: 0
 
-  check-layouts:
-    name: Layout warnings
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-    - run: python3 check_layout.py
-    - name: "Fix your layout accordingly or run 'python3 check_layout.py' to promote the warnings"
-      run: git diff --exit-code
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
 
-  check-compose:
-    name: Compose key data
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-    - run: python3 srcs/compose/compile.py srcs/compose/{*.json,compose} > srcs/juloo.keyboard2/ComposeKeyData.java
-    - name: "Run 'gradle test' to update the generated files."
-      run: git diff --exit-code
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
 
-  check-method:
-    name: method.xml
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-    - run: python3 gen_method_xml.py > res/xml/method.xml
-    - name: "Run 'gradle test' to update the generated files."
-      run: git diff --exit-code
+    - name: Run check
+      run: ./scripts/check.sh

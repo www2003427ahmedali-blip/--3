@@ -14,14 +14,11 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v6
       with:
-        submodules: true
+        submodules: recursive
+        fetch-depth: 0
 
     - name: Restore debug keystore from GitHub Secrets
       run: |
-        # Check if exist and use the secret named DEBUG_KEYSTORE
-        # The contents of the secret can be obtained -
-        #  from the debug.keystore.asc from you local folder 
-        #  (refer to CONTRIBUTING.md Using the local debug.keystore on the Github CI actions)
         if [[ ! "${{ secrets.DEBUG_KEYSTORE }}" = "" ]]; then
             echo "${{ secrets.DEBUG_KEYSTORE }}" > "debug.keystore.asc"
             if [[ -s "debug.keystore.asc" ]]; then
@@ -46,7 +43,7 @@ jobs:
       run: |
         gradle assembleDebug
         artifact="${{github.repository_owner}} ${{github.ref_name}}"
-        artifact="${artifact//\//-}" # replace slashes
+        artifact="${artifact//\//-}"
         echo "artifact=${artifact}" >> $GITHUB_ENV
       env:
         DEBUG_KEYSTORE: "debug.keystore"
