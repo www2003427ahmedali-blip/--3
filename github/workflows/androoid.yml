@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
           with:
-          sunmodules: recursive
+          submodules: recursive
 
       - name: Set up JDK
         uses: actions/setup-java@v4
