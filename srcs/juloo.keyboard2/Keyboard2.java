@@ -50,6 +50,7 @@ public class Keyboard2 extends InputMethodService
   private Dictionaries _dictionaries;
   private ViewGroup _emojiPane = null;
   private ViewGroup _clipboard_pane = null;
+  private ViewGroup _ai_chat_pane = null;
   private Handler _handler;
 
   private Config _config;
@@ -84,7 +85,6 @@ public class Keyboard2 extends InputMethodService
   {
     _config.set_current_layout(l);
     _currentSpecialLayout = null;
-    // The active dictionary depends on the current layout.
     refresh_current_dictionary();
     refresh_candidates_view();
     _keyboard_layout_view.setKeyboard(current_layout());
@@ -107,7 +107,6 @@ public class Keyboard2 extends InputMethodService
     return KeyboardData.load(getResources(), layout_id);
   }
 
-  /** Load a layout that contains a numpad. */
   KeyboardData loadNumpad(int layout_id)
   {
     return LayoutModifier.modify_numpad(KeyboardData.load(getResources(), layout_id),
@@ -153,7 +152,6 @@ public class Keyboard2 extends InputMethodService
   @Override
   public void onDestroy() {
     super.onDestroy();
-
     _foldStateTracker.close();
   }
 
@@ -197,8 +195,6 @@ public class Keyboard2 extends InputMethodService
     _dictionaries.set_current_dictionary(_config, dict_name);
   }
 
-  /** Remember and apply the dictionary chosen by the user for the current
-      context. */
   private void select_dictionary(String dict_name)
   {
     _dictionaries.set_selected(_config, dict_name);
@@ -220,22 +216,19 @@ public class Keyboard2 extends InputMethodService
     _candidates_view.setVisibility(should_show ? View.VISIBLE : View.GONE);
   }
 
-  /** Might re-create the keyboard view. [_keyboard_layout_view.setKeyboard()] and
-      [setInputView()] must be called soon after. */
   private void refresh_config()
   {
     int prev_theme = _config.theme;
     _config.refresh(getResources(), _foldStateTracker.isUnfolded(), _dictionaries);
     refresh_current_dictionary();
-    // Refreshing the theme config requires re-creating the views
     if (prev_theme != _config.theme)
     {
       create_keyboard_view();
       _emojiPane = null;
       _clipboard_pane = null;
+      _ai_chat_pane = null;
       setInputView(_keyboard_container_view);
     }
-    // Set keyboard background opacity
     Drawable bg = _keyboard_container_view.getBackground().mutate();
     bg.setAlpha(_config.keyboardOpacity);
     _keyboard_container_view.setBackground(bg);
@@ -295,14 +288,11 @@ public class Keyboard2 extends InputMethodService
 
   private void updateSoftInputWindowLayoutParams() {
     final Window window = getWindow().getWindow();
-    // On API >= 35, Keyboard2View behaves as edge-to-edge
-    // APIs 30 to 34 have visual artifact when edge-to-edge is enabled
     if (VERSION.SDK_INT >= 35)
     {
       WindowManager.LayoutParams wattrs = window.getAttributes();
       wattrs.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-      // Allow to draw behind system bars
       wattrs.setFitInsetsTypes(0);
       window.setDecorFitsSystemWindows(false);
     }
@@ -315,7 +305,6 @@ public class Keyboard2 extends InputMethodService
                     ? ViewGroup.LayoutParams.MATCH_PARENT
                     : ViewGroup.LayoutParams.WRAP_CONTENT);
     updateLayoutGravityOf((View) inputArea.getParent(), Gravity.BOTTOM);
-
   }
 
   private static void updateLayoutHeightOf(final Window window, final int layoutHeight) {
@@ -386,14 +375,12 @@ public class Keyboard2 extends InputMethodService
   @Override
   public boolean onEvaluateFullscreenMode()
   {
-    /* Entirely disable fullscreen mode. */
     return false;
   }
 
   @Override
   public boolean onEvaluateInputViewShown()
   {
-    // Since Android 16, this method returns [false] for unknown reasons.
     if (super.onEvaluateInputViewShown())
       return true;
     if (getResources().getConfiguration().hardKeyboardHidden
@@ -411,7 +398,6 @@ public class Keyboard2 extends InputMethodService
     start_activity(DictionariesActivity.class);
   }
 
-  /** Called from [onClick] attributes. */
   public void launch_dictionaries_activity(View v)
   {
     launch_dictionaries_activity();
@@ -424,7 +410,6 @@ public class Keyboard2 extends InputMethodService
     startActivity(intent);
   }
 
-  /** Not static */
   public class Receiver implements KeyEventHandler.IReceiver,
          KeyValue.Stateful.Symbol_provider, DictionarySwitcher.Callback
   {
@@ -459,7 +444,14 @@ public class Keyboard2 extends InputMethodService
 
         case SWITCH_BACK_EMOJI:
         case SWITCH_BACK_CLIPBOARD:
+        case SWITCH_BACK_AI_CHAT:
           setInputView(_keyboard_container_view);
+          break;
+
+        case SWITCH_AI_CHAT:
+          if (_ai_chat_pane == null)
+            _ai_chat_pane = (ViewGroup)inflate_view(R.layout.ai_chat_pane);
+          setInputView(_ai_chat_pane);
           break;
 
         case CHANGE_METHOD_PICKER:
